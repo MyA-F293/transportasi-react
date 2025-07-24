@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calculator, Plus, Minus, ArrowRight } from 'lucide-react';
 
 const VogelMethod = () => {
@@ -12,6 +12,42 @@ const VogelMethod = () => {
   const [allocation, setAllocation] = useState([]);
   const [totalCost, setTotalCost] = useState(null);
   const [steps, setSteps] = useState([]);
+
+  // Update matrices when dimensions change
+  useEffect(() => {
+    setSupply(prev => {
+      const newSupply = Array(sources).fill('');
+      for (let i = 0; i < Math.min(prev.length, sources); i++) {
+        newSupply[i] = prev[i];
+      }
+      return newSupply;
+    });
+
+    setCostMatrix(prev => {
+      const newMatrix = Array.from({ length: sources }, () => Array(destinations).fill(''));
+      for (let i = 0; i < Math.min(prev.length, sources); i++) {
+        for (let j = 0; j < Math.min(prev[i]?.length || 0, destinations); j++) {
+          newMatrix[i][j] = prev[i][j];
+        }
+      }
+      return newMatrix;
+    });
+
+    // Clear allocation, total cost, and steps when dimensions change
+    setAllocation([]);
+    setTotalCost(null);
+    setSteps([]);
+  }, [sources, destinations]);
+
+  useEffect(() => {
+    setDemand(prev => {
+      const newDemand = Array(destinations).fill('');
+      for (let i = 0; i < Math.min(prev.length, destinations); i++) {
+        newDemand[i] = prev[i];
+      }
+      return newDemand;
+    });
+  }, [destinations]);
 
   const applyDims = () => {
     setSupply(Array(sources).fill(''));
@@ -118,8 +154,20 @@ const VogelMethod = () => {
 
   const calculate = () => {
     const m = sources, n = destinations;
-    const sup = supply.map(Number);
-    const dem = demand.map(Number);
+    const sup = supply.map(x => Number(x) || 0);
+    const dem = demand.map(x => Number(x) || 0);
+    
+    // Validate input
+    if (sup.some(x => x <= 0) || dem.some(x => x <= 0)) {
+      alert('Harap isi semua nilai pasokan dan permintaan dengan angka positif');
+      return;
+    }
+
+    if (costMatrix.some(row => row.some(cell => cell === '' || isNaN(Number(cell))))) {
+      alert('Harap isi semua nilai biaya dengan angka');
+      return;
+    }
+
     const costs = costMatrix.map(row => row.map(Number));
     
     // Cek keseimbangan supply dan demand
@@ -232,7 +280,7 @@ const VogelMethod = () => {
             <div className="inline-flex items-center gap-2 mb-3">
               <Calculator className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
               <h1 className="text-xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                Metode Vogel (VAM) 
+                Metode Vogel (VAM)
               </h1>
             </div>
             <p className="text-gray-600 text-xs sm:text-sm max-w-2xl mx-auto">
@@ -265,7 +313,7 @@ const VogelMethod = () => {
                       type="number"
                       min={1}
                       value={sources}
-                      onChange={e => setSources(Number(e.target.value))}
+                      onChange={e => setSources(Math.max(1, Number(e.target.value) || 1))}
                       className="w-full px-2 py-1.5 sm:px-3 sm:py-2 bg-blue-50 border border-blue-100 rounded-lg text-center text-xs sm:text-sm font-bold focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-100 outline-none transition-all duration-200"
                     />
                   </div>
@@ -298,7 +346,7 @@ const VogelMethod = () => {
                       type="number"
                       min={1}
                       value={destinations}
-                      onChange={e => setDestinations(Number(e.target.value))}
+                      onChange={e => setDestinations(Math.max(1, Number(e.target.value) || 1))}
                       className="w-full px-2 py-1.5 sm:px-3 sm:py-2 bg-blue-50 border border-blue-100 rounded-lg text-center text-xs sm:text-sm font-bold focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-100 outline-none transition-all duration-200"
                     />
                   </div>
@@ -333,31 +381,30 @@ const VogelMethod = () => {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[600px]">
                 <thead>
-  <tr className="bg-gradient-to-r from-blue-50 to-blue-100">
-    {/* Modifikasi bagian ini */}
-    <th className="p-2 sm:p-3 text-left font-bold text-gray-700 ">
-      <div className="flex items-center gap-1.5 sm:gap-2">
-        <span className="text-[11px] sm:text-xs pl-10">Asal/Tujuan</span>
-      </div>
-    </th>
-    
-    {demand.map((_, j) => (
-      <th key={j} className="p-2 sm:p-3 text-center font-bold text-blue-700 min-w-[90px] sm:min-w-[110px]">
-        <div className="flex flex-col items-center gap-0.5 sm:gap-1">
-          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full"></div>
-          <span className="text-[11px] sm:text-xs">Tujuan {j+1}</span>
-        </div>
-      </th>
-    ))}
-    
-    <th className="p-2 sm:p-3 text-center font-bold text-blue-700 min-w-[90px] sm:min-w-[110px]">
-      <div className="flex flex-col items-center gap-0.5 sm:gap-1">
-        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full"></div>
-        <span className="text-[11px] sm:text-xs">Pasokan</span>
-      </div>
-    </th>
-  </tr>
-</thead>
+                  <tr className="bg-gradient-to-r from-blue-50 to-blue-100">
+                    <th className="p-2 sm:p-3 text-left font-bold text-gray-700 ">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <span className="text-[11px] sm:text-xs pl-10">Asal/Tujuan</span>
+                      </div>
+                    </th>
+                    
+                    {demand.map((_, j) => (
+                      <th key={j} className="p-2 sm:p-3 text-center font-bold text-blue-700 min-w-[90px] sm:min-w-[110px]">
+                        <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                          <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full"></div>
+                          <span className="text-[11px] sm:text-xs">Tujuan {j+1}</span>
+                        </div>
+                      </th>
+                    ))}
+                    
+                    <th className="p-2 sm:p-3 text-center font-bold text-blue-700 min-w-[90px] sm:min-w-[110px]">
+                      <div className="flex flex-col items-center gap-0.5 sm:gap-1">
+                        <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-[11px] sm:text-xs">Pasokan</span>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
                 <tbody>
                   {Array.from({ length: sources }).map((_, i) => (
                     <tr key={i} className="border-t border-blue-50 hover:bg-blue-50 transition-colors">
@@ -374,7 +421,7 @@ const VogelMethod = () => {
                               <input
                                 type="number"
                                 placeholder="Biaya"
-                                value={costMatrix[i][j]}
+                                value={costMatrix[i]?.[j] || ''}
                                 onChange={e => updateCost(i, j, e.target.value)}
                                 className="w-[60px] sm:w-[70px] h-7 sm:h-8 px-1 sm:px-1.5 text-[11px] sm:text-xs text-center bg-white border border-blue-100 rounded-md sm:rounded-lg focus:border-blue-500 focus:bg-white focus:ring-1 sm:focus:ring-2 focus:ring-blue-100 outline-none transition-all duration-200"
                               />
@@ -395,7 +442,7 @@ const VogelMethod = () => {
                           <input
                             type="number"
                             placeholder="Pasokan"
-                            value={supply[i]}
+                            value={supply[i] || ''}
                             onChange={e => updateSupply(i, e.target.value)}
                             className="w-[70px] sm:w-[80px] h-7 sm:h-8 px-1 sm:px-1.5 text-[11px] sm:text-xs text-center bg-blue-50 border border-blue-200 rounded-md sm:rounded-lg font-medium focus:border-blue-500 focus:bg-white focus:ring-1 sm:focus:ring-2 focus:ring-blue-100 outline-none transition-all duration-200"
                           />
@@ -412,16 +459,16 @@ const VogelMethod = () => {
                     </td>
                     {demand.map((val, j) => (
                       <td key={j} className="p-1 sm:p-2">
-  <div className="flex justify-center">
-    <input
-      type="number"
-      placeholder="Permintaan"
-      value={val}
-      onChange={e => updateDemand(j, e.target.value)}
-      className="w-[90px] sm:w-[100px] h-7 sm:h-8 px-1 sm:px-1.5 text-[11px] sm:text-xs text-center bg-blue-50 border border-blue-200 rounded-md sm:rounded-lg font-medium focus:border-blue-500 focus:bg-white focus:ring-1 sm:focus:ring-2 focus:ring-blue-100 outline-none transition-all duration-200"
-    />
-  </div>
-</td>
+                        <div className="flex justify-center">
+                          <input
+                            type="number"
+                            placeholder="Permintaan"
+                            value={val}
+                            onChange={e => updateDemand(j, e.target.value)}
+                            className="w-[90px] sm:w-[100px] h-7 sm:h-8 px-1 sm:px-1.5 text-[11px] sm:text-xs text-center bg-blue-50 border border-blue-200 rounded-md sm:rounded-lg font-medium focus:border-blue-500 focus:bg-white focus:ring-1 sm:focus:ring-2 focus:ring-blue-100 outline-none transition-all duration-200"
+                          />
+                        </div>
+                      </td>
                     ))}
                     <td className="p-1 sm:p-2"></td>
                   </tr>
@@ -463,6 +510,30 @@ const VogelMethod = () => {
                     </span>
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Steps Display */}
+        {steps.length > 0 && (
+          <div className="mt-6 sm:mt-8 animate-in slide-in-from-bottom duration-500">
+            <div className="bg-white rounded-lg sm:rounded-xl border border-blue-200 p-4 sm:p-6 shadow">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                Langkah-langkah Perhitungan Vogel
+              </h3>
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {steps.map((step, index) => (
+                  <div key={index} className="bg-blue-50 rounded-lg p-3 border border-blue-100">
+                    <div className="font-semibold text-blue-800 mb-2">
+                      Langkah {step.step}: Alokasi {step.allocation} unit ke sel ({step.selectedCell.i + 1}, {step.selectedCell.j + 1})
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      Penalty tertinggi: {step.maxPenalty} pada {step.isRowSelected ? `baris ${step.selectedIndex + 1}` : `kolom ${step.selectedIndex + 1}`}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
